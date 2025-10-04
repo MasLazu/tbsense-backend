@@ -1,0 +1,34 @@
+using TbSense.Backend.Domain.Entities;
+using TbSense.Backend.EfCore.Data;
+using MasLazu.AspNet.Framework.Application.Interfaces;
+using MasLazu.AspNet.Framework.EfCore.Data;
+using MasLazu.AspNet.Framework.EfCore.Repositories;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace TbSense.Backend.EfCore.Extensions;
+
+public static class TbSenseBackendEfCoreExtensions
+{
+    public static IServiceCollection AddTbSenseBackendEntityFrameworkCore(this IServiceCollection services)
+    {
+        services.AddScoped<IRepository<Plantation>, Repository<Plantation, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<PlantationCoordinate>, Repository<PlantationCoordinate, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<Tree>, Repository<Tree, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<TreeMetric>, Repository<TreeMetric, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<Model>, Repository<Model, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<PlantationYieldPrediction>, Repository<PlantationYieldPrediction, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<PlantationHarvest>, Repository<PlantationHarvest, TbSenseBackendDbContext>>();
+
+        services.AddScoped<IReadRepository<Plantation>, ReadRepository<Plantation, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<PlantationCoordinate>, ReadRepository<PlantationCoordinate, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<Tree>, ReadRepository<Tree, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<TreeMetric>, ReadRepository<TreeMetric, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<Model>, ReadRepository<Model, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<PlantationYieldPrediction>, ReadRepository<PlantationYieldPrediction, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<PlantationHarvest>, ReadRepository<PlantationHarvest, TbSenseBackendReadDbContext>>();
+
+        services.AddScoped<BaseDbContext>(sp => sp.GetRequiredService<TbSenseBackendDbContext>());
+
+        return services;
+    }
+}

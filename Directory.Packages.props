@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="FastEndpoints" Version="7.0.1" />
+    <PackageVersion Include="FluentStorage" Version="6.0.0" />
+    <PackageVersion Include="FluentStorage.AWS" Version="6.0.0" />
+    <PackageVersion Include="FluentValidation" Version="12.0.0" />
+    <PackageVersion Include="MasLazu.AspNet.Framework.Application" Version="1.0.0-preview.16" />
+    <PackageVersion Include="MasLazu.AspNet.Framework.Domain" Version="1.0.0-preview.16" />
+    <PackageVersion Include="MasLazu.AspNet.Framework.EfCore" Version="1.0.0-preview.16" />
+    <PackageVersion Include="MasLazu.AspNet.Framework.EfCore.Postgresql" Version="1.0.0-preview.16" />
+    <PackageVersion Include="MasLazu.AspNet.Framework.Endpoint" Version="1.0.0-preview.16" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+</Project>

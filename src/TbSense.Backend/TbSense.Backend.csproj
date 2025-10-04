@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="MasLazu.AspNet.Framework.Application" />
+    <ProjectReference Include="..\TbSense.Backend.Domain\TbSense.Backend.Domain.csproj" />
+    <ProjectReference Include="..\TbSense.Backend.Abstraction\TbSense.Backend.Abstraction.csproj" />
+    <ProjectReference Include="..\TbSense.Backend.Storage.Abstraction\TbSense.Backend.Storage.Abstraction.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TbSense.Backend.Trainer.Abstraction\TbSense.Backend.Trainer.Abstraction.csproj" />
+    <ProjectReference Include="..\TbSense.Backend.Trainer\TbSense.Backend.Trainer.csproj" />
+  </ItemGroup>
+
+</Project>
