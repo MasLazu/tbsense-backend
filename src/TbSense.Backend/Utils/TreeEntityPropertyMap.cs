@@ -11,6 +11,8 @@ public class TreeEntityPropertyMap : IEntityPropertyMap<Tree>
         {
             { "id", t => t.Id },
             { "plantationId", t => t.PlantationId },
+            { "longitude", t => t.Longitude },
+            { "latitude", t => t.Latitude },
             { "createdAt", t => t.CreatedAt },
             { "updatedAt", t => t.UpdatedAt! },
         };

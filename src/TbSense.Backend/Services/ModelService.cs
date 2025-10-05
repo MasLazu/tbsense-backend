@@ -115,7 +115,8 @@ public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, Upd
             AvgHumidity: row.AvgHumidity,
             AvgSoilMoisture: row.AvgSoilMoisture,
             AvgLightIntensity: row.AvgLightIntensity,
-            TotalYieldKg: row.TotalYieldKg,
+            TreesPerHectare: row.TreesPerHectare,
+            YieldPerHectarePerMonth: row.YieldPerHectarePerMonth,
             PeriodStart: row.PeriodStart,
             PeriodEnd: row.PeriodEnd
         )).ToList();
@@ -212,6 +213,24 @@ public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, Upd
 
             if (totalYield > 0)
             {
+                // Calculate trees per hectare
+                int treeCount = plantation.Trees?.Count ?? 0;
+                double treesPerHectare = plantation.LandAreaHectares > 0
+                    ? treeCount / (double)plantation.LandAreaHectares
+                    : 0;
+
+                // Calculate the number of months in the period
+                double periodMonths = (endDate - startDate).TotalDays / 30.0; // Approximate month length
+                if (periodMonths == 0)
+                {
+                    periodMonths = 1; // Avoid division by zero
+                }
+
+                // Calculate yield per hectare per month
+                double yieldPerHectarePerMonth = plantation.LandAreaHectares > 0
+                    ? totalYield / plantation.LandAreaHectares / periodMonths
+                    : 0;
+
                 processedData.Add(new ProcessedDataRow(
                     PlantationId: plantation.Id,
                     PlantationAgeDays: plantationAgeDays,
@@ -219,7 +238,8 @@ public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, Upd
                     AvgHumidity: avgHumidity,
                     AvgSoilMoisture: avgSoilMoisture,
                     AvgLightIntensity: avgLightIntensity,
-                    TotalYieldKg: totalYield,
+                    TreesPerHectare: treesPerHectare,
+                    YieldPerHectarePerMonth: yieldPerHectarePerMonth,
                     PeriodStart: startDate,
                     PeriodEnd: endDate
                 ));

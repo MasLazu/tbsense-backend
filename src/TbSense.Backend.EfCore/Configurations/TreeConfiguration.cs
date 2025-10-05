@@ -13,6 +13,12 @@ public class TreeConfiguration : IEntityTypeConfiguration<Tree>
         builder.Property(t => t.PlantationId)
             .IsRequired();
 
+        builder.Property(t => t.Longitude)
+            .HasPrecision(10, 7);
+
+        builder.Property(t => t.Latitude)
+            .HasPrecision(10, 7);
+
         builder.HasOne(t => t.Plantation)
             .WithMany(p => p.Trees)
             .HasForeignKey(t => t.PlantationId);

@@ -9,6 +9,12 @@ public class CreateTreeRequestValidator : AbstractValidator<CreateTreeRequest>
     {
         RuleFor(x => x.PlantationId)
             .NotEmpty();
+
+        RuleFor(x => x.Longitude)
+            .InclusiveBetween(-180, 180);
+
+        RuleFor(x => x.Latitude)
+            .InclusiveBetween(-90, 90);
     }
 }
 
@@ -22,5 +28,13 @@ public class UpdateTreeRequestValidator : AbstractValidator<UpdateTreeRequest>
         RuleFor(x => x.PlantationId)
             .NotEmpty()
             .When(x => x.PlantationId.HasValue);
+
+        RuleFor(x => x.Longitude)
+            .InclusiveBetween(-180, 180)
+            .When(x => x.Longitude.HasValue);
+
+        RuleFor(x => x.Latitude)
+            .InclusiveBetween(-90, 90)
+            .When(x => x.Latitude.HasValue);
     }
 }

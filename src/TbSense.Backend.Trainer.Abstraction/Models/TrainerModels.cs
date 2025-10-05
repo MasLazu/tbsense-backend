@@ -12,7 +12,8 @@ public record TrainingDataRow(
     double AvgHumidity,
     double AvgSoilMoisture,
     double AvgLightIntensity,
-    double TotalYieldKg,
+    double TreesPerHectare,
+    double YieldPerHectarePerMonth,
     DateTime PeriodStart,
     DateTime PeriodEnd
 );
