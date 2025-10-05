@@ -8,9 +8,18 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="FastEndpoints" />
+    <PackageReference Include="FastEndpoints.Swagger" />
+    <PackageReference Include="MasLazu.AspNet.Framework.Application" />
+    <PackageReference Include="MasLazu.AspNet.Framework.EfCore" />
+    <PackageReference Include="MasLazu.AspNet.Framework.Endpoint" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TbSense.Backend\TbSense.Backend.csproj" />
+    <ProjectReference Include="..\TbSense.Backend.Endpoints\TbSense.Backend.Endpoints.csproj" />
+    <ProjectReference Include="..\TbSense.Backend.EfCore\TbSense.Backend.EfCore.csproj" />
+    <ProjectReference Include="..\TbSense.Backend.EfCore.Postgresql\TbSense.Backend.EfCore.Postgresql.csproj" />
     <ProjectReference Include="..\TbSense.Backend.Storage\TbSense.Backend.Storage.csproj" />
     <ProjectReference Include="..\TbSense.Backend.Trainer\TbSense.Backend.Trainer.csproj" />
   </ItemGroup>
