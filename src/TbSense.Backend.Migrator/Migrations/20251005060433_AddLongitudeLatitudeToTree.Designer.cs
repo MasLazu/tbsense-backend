@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TbSense.Backend.EfCore.Data;
@@ -11,9 +12,11 @@ using TbSense.Backend.EfCore.Data;
 namespace TbSense.Backend.Migrator.Migrations
 {
     [DbContext(typeof(TbSenseBackendDbContext))]
-    partial class TbSenseBackendDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251005060433_AddLongitudeLatitudeToTree")]
+    partial class AddLongitudeLatitudeToTree
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
