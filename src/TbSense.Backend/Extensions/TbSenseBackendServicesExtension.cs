@@ -16,6 +16,10 @@ public static class TbSenseBackendServicesExtension
         services.AddScoped<IPlantationYieldPredictionService, PlantationYieldPredictionService>();
         services.AddScoped<IPlantationHarvestService, PlantationHarvestService>();
 
+        // Dashboard services
+        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IPlantationDashboardService, PlantationDashboardService>();
+
         return services;
     }
 }

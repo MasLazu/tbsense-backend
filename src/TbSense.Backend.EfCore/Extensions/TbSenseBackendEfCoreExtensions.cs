@@ -1,5 +1,7 @@
 using TbSense.Backend.Domain.Entities;
 using TbSense.Backend.EfCore.Data;
+using TbSense.Backend.EfCore.Repositories;
+using TbSense.Backend.Interfaces;
 using MasLazu.AspNet.Framework.Application.Interfaces;
 using MasLazu.AspNet.Framework.EfCore.Data;
 using MasLazu.AspNet.Framework.EfCore.Repositories;
@@ -26,6 +28,11 @@ public static class TbSenseBackendEfCoreExtensions
         services.AddScoped<IReadRepository<Model>, ReadRepository<Model, TbSenseBackendReadDbContext>>();
         services.AddScoped<IReadRepository<PlantationYieldPrediction>, ReadRepository<PlantationYieldPrediction, TbSenseBackendReadDbContext>>();
         services.AddScoped<IReadRepository<PlantationHarvest>, ReadRepository<PlantationHarvest, TbSenseBackendReadDbContext>>();
+
+        // Custom repositories
+        services.AddScoped<ITrainingDataRepository, TrainingDataRepository>();
+        services.AddScoped<IDashboardRepository, DashboardRepository>();
+        services.AddScoped<IPlantationDashboardRepository, PlantationDashboardRepository>();
 
         services.AddScoped<BaseDbContext>(sp => sp.GetRequiredService<TbSenseBackendDbContext>());
 

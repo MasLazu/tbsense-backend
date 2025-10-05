@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="MasLazu.AspNet.Framework.EfCore" />
     <ProjectReference Include="..\TbSense.Backend.Domain\TbSense.Backend.Domain.csproj" />
+    <ProjectReference Include="..\TbSense.Backend\TbSense.Backend.csproj" />
   </ItemGroup>
 
 </Project>

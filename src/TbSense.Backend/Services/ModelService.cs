@@ -9,16 +9,14 @@ using MasLazu.AspNet.Framework.Application.Exceptions;
 using Microsoft.Extensions.Logging;
 using TbSense.Backend.Trainer.Abstraction.Interfaces;
 using TbSense.Backend.Trainer.Abstraction.Models;
+using TbSense.Backend.Interfaces;
 
 namespace TbSense.Backend.Services;
 
 public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, UpdateModelRequest>, IModelService
 {
     private readonly IStorageService _storageService;
-    private readonly IReadRepository<Plantation> _plantationRepository;
-    private readonly IReadRepository<Tree> _treeRepository;
-    private readonly IReadRepository<TreeMetric> _treeMetricRepository;
-    private readonly IReadRepository<PlantationHarvest> _harvestRepository;
+    private readonly ITrainingDataRepository _trainingDataRepository;
     private readonly ITrainerService _trainerService;
     private readonly ILogger<ModelService> _logger;
 
@@ -30,10 +28,7 @@ public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, Upd
         IPaginationValidator<Model> paginationValidator,
         ICursorPaginationValidator<Model> cursorPaginationValidator,
         IStorageService storageService,
-        IReadRepository<Plantation> plantationRepository,
-        IReadRepository<Tree> treeRepository,
-        IReadRepository<TreeMetric> treeMetricRepository,
-        IReadRepository<PlantationHarvest> harvestRepository,
+        ITrainingDataRepository trainingDataRepository,
         ITrainerService trainerService,
         ILogger<ModelService> logger,
         IValidator<CreateModelRequest>? createValidator = null,
@@ -41,10 +36,7 @@ public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, Upd
         : base(repository, readRepository, unitOfWork, propertyMap, paginationValidator, cursorPaginationValidator, createValidator, updateValidator)
     {
         _storageService = storageService;
-        _plantationRepository = plantationRepository;
-        _treeRepository = treeRepository;
-        _treeMetricRepository = treeMetricRepository;
-        _harvestRepository = harvestRepository;
+        _trainingDataRepository = trainingDataRepository;
         _trainerService = trainerService;
         _logger = logger;
     }
@@ -159,92 +151,11 @@ public class ModelService : CrudService<Model, ModelDto, CreateModelRequest, Upd
     {
         _logger.LogInformation("Preparing training data from {Start} to {End}", startDate, endDate);
 
-        IEnumerable<Plantation> plantations = await _plantationRepository.FindAsync(
-            p => true,
-            p => p.Trees!,
-            p => p.Harvests!
-        );
-
-        var processedData = new List<ProcessedDataRow>();
-
-        foreach (Plantation plantation in plantations)
-        {
-            int plantationAgeDays = (startDate - plantation.PlantedDate).Days;
-
-            if (plantationAgeDays < 0)
-            {
-                continue;
-            }
-
-            List<Guid> treeIds = plantation.Trees?.Select(t => t.Id).ToList() ?? new List<Guid>();
-
-            if (treeIds.Count == 0)
-            {
-                continue;
-            }
-
-            IEnumerable<TreeMetric> metrics = await _treeMetricRepository.FindAsync(
-                m => treeIds.Contains(m.TreeId) &&
-                     m.CreatedAt >= startDate &&
-                     m.CreatedAt <= endDate,
-                ct);
-
-            var metricsList = metrics.ToList();
-
-            if (metricsList.Count == 0)
-            {
-                continue;
-            }
-
-            double avgAirTemperature = metricsList.Average(m => m.AirTemperature);
-            double avgSoilTemperature = metricsList.Average(m => m.SoilTemperature);
-            double avgSoilMoisture = metricsList.Average(m => m.SoilMoisture);
-            double avgTemperature = avgAirTemperature;
-            double avgHumidity = 0;
-            double avgLightIntensity = 0;
-
-            IEnumerable<PlantationHarvest> harvests = await _harvestRepository.FindAsync(
-                h => h.PlantationId == plantation.Id &&
-                     h.HarvestDate >= startDate &&
-                     h.HarvestDate <= endDate,
-                ct);
-
-            double totalYield = harvests.Sum(h => h.YieldKg);
-
-            if (totalYield > 0)
-            {
-                // Calculate trees per hectare
-                int treeCount = plantation.Trees?.Count ?? 0;
-                double treesPerHectare = plantation.LandAreaHectares > 0
-                    ? treeCount / (double)plantation.LandAreaHectares
-                    : 0;
-
-                // Calculate the number of months in the period
-                double periodMonths = (endDate - startDate).TotalDays / 30.0; // Approximate month length
-                if (periodMonths == 0)
-                {
-                    periodMonths = 1; // Avoid division by zero
-                }
-
-                // Calculate yield per hectare per month
-                double yieldPerHectarePerMonth = plantation.LandAreaHectares > 0
-                    ? totalYield / plantation.LandAreaHectares / periodMonths
-                    : 0;
-
-                processedData.Add(new ProcessedDataRow(
-                    PlantationId: plantation.Id,
-                    PlantationAgeDays: plantationAgeDays,
-                    AvgTemperature: avgTemperature,
-                    AvgHumidity: avgHumidity,
-                    AvgSoilMoisture: avgSoilMoisture,
-                    AvgLightIntensity: avgLightIntensity,
-                    TreesPerHectare: treesPerHectare,
-                    YieldPerHectarePerMonth: yieldPerHectarePerMonth,
-                    PeriodStart: startDate,
-                    PeriodEnd: endDate
-                ));
-            }
-        }
+        // Use the efficient repository that performs all calculations at the database level
+        List<ProcessedDataRow> processedData = await _trainingDataRepository.GetTrainingDataAsync(
+            startDate,
+            endDate,
+            ct);
 
         _logger.LogInformation("Prepared {Count} processed data rows", processedData.Count);
         return processedData;
