@@ -15,6 +15,7 @@ public class UpdateTreeMetricEndpoint : BaseEndpoint<UpdateTreeMetricRequest, Tr
     {
         Put("/");
         Group<TreeMetricsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(UpdateTreeMetricRequest req, CancellationToken ct)

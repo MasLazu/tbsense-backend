@@ -15,6 +15,7 @@ public class CreateTreeEndpoint : BaseEndpoint<CreateTreeRequest, TreeDto>
     {
         Post("/");
         Group<TreesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(CreateTreeRequest req, CancellationToken ct)

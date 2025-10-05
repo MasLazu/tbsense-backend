@@ -15,6 +15,7 @@ public class GetPlantationYieldPredictionsPaginatedEndpoint : BaseEndpoint<Pagin
     {
         Post("/paginated");
         Group<PlantationYieldPredictionsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PaginationRequest req, CancellationToken ct)

@@ -15,6 +15,7 @@ public class DeletePlantationYieldPredictionEndpoint : BaseEndpointWithoutRespon
     {
         Delete("/{Id}");
         Group<PlantationYieldPredictionsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

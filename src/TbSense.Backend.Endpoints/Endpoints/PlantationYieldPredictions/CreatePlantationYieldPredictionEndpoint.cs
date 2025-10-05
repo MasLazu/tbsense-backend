@@ -15,6 +15,7 @@ public class CreatePlantationYieldPredictionEndpoint : BaseEndpoint<CreatePlanta
     {
         Post("/");
         Group<PlantationYieldPredictionsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(CreatePlantationYieldPredictionRequest req, CancellationToken ct)

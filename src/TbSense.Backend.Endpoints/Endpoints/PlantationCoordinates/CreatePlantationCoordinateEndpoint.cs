@@ -15,6 +15,7 @@ public class CreatePlantationCoordinateEndpoint : BaseEndpoint<CreatePlantationC
     {
         Post("/");
         Group<PlantationCoordinatesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(CreatePlantationCoordinateRequest req, CancellationToken ct)

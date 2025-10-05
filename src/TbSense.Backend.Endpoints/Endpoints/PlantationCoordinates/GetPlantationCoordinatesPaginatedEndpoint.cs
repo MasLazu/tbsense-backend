@@ -15,6 +15,7 @@ public class GetPlantationCoordinatesPaginatedEndpoint : BaseEndpoint<Pagination
     {
         Post("/paginated");
         Group<PlantationCoordinatesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PaginationRequest req, CancellationToken ct)

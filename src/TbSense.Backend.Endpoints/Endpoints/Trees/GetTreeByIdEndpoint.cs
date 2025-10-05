@@ -16,6 +16,7 @@ public class GetTreeByIdEndpoint : BaseEndpoint<IdRequest, TreeDto>
     {
         Get("/{Id}");
         Group<TreesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

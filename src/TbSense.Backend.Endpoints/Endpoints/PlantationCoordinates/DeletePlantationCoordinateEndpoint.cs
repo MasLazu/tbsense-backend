@@ -15,6 +15,7 @@ public class DeletePlantationCoordinateEndpoint : BaseEndpointWithoutResponse<Id
     {
         Delete("/{Id}");
         Group<PlantationCoordinatesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

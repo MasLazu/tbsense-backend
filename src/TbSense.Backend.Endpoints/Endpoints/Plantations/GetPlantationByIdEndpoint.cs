@@ -16,6 +16,7 @@ public class GetPlantationByIdEndpoint : BaseEndpoint<IdRequest, PlantationDto>
     {
         Get("/{Id}");
         Group<PlantationsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

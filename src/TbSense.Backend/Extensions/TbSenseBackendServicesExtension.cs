@@ -19,6 +19,7 @@ public static class TbSenseBackendServicesExtension
         // Dashboard services
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IPlantationDashboardService, PlantationDashboardService>();
+        services.AddScoped<ITreeDashboardService, TreeDashboardService>();
 
         return services;
     }

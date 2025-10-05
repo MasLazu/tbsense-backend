@@ -1,4 +1,5 @@
 using FluentStorage;
+using FluentStorage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TbSense.Backend.Storage.Abstraction.Interfaces;
@@ -12,7 +13,7 @@ public static class StorageServiceExtensions
     {
         services.AddSingleton<IStorageService, StorageService>();
 
-        services.AddSingleton(sp =>
+        services.AddSingleton<IBlobStorage>(sp =>
         {
             IConfigurationSection minioConfig = configuration.GetSection("MinIO");
             string endpoint = minioConfig["Endpoint"] ?? "localhost:9000";
@@ -21,9 +22,15 @@ public static class StorageServiceExtensions
             string bucketName = minioConfig["BucketName"] ?? "models";
             bool useSSL = minioConfig.GetValue("UseSSL", false);
 
-            string connectionString = $"s3://{accessKey}:{secretKey}@{endpoint}/{bucketName}?ssl={useSSL}";
+            string minioServerUrl = useSSL ? $"https://{endpoint}" : $"http://{endpoint}";
 
-            return StorageFactory.Blobs.FromConnectionString(connectionString);
+            return StorageFactory.Blobs.MinIO(
+                accessKey,
+                secretKey,
+                bucketName,
+                "us-east-1",
+                minioServerUrl
+            );
         });
 
         return services;

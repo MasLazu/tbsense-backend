@@ -13,8 +13,9 @@ public class GetPlantationTreesSummaryEndpoint : BaseEndpoint<PlantationIdReques
 
     public override void ConfigureEndpoint()
     {
-        Get("/summary/trees");
+        Get("/{plantationId}/summary/trees");
         Group<PlantationDashboardEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PlantationIdRequest req, CancellationToken ct)

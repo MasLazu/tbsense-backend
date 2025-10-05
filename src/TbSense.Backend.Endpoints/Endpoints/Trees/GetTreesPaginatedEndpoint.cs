@@ -15,6 +15,7 @@ public class GetTreesPaginatedEndpoint : BaseEndpoint<PaginationRequest, Paginat
     {
         Post("/paginated");
         Group<TreesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PaginationRequest req, CancellationToken ct)

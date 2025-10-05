@@ -39,23 +39,64 @@ public record PlantationRankingResponse(
 );
 
 public record PlantationCurrentMetricsResponse(
-    double Temperature,
+    double AirTemperature,
+    double SoilTemperature,
     double SoilMoisture,
-    double Humidity,
-    double LightIntensity,
     DateTime LastUpdated
 );
 
-public record PlantationHealthStatusResponse(
-    Dictionary<string, string> Status
-);
-
-public record EnvironmentalAverageResponse(
+public record EnvironmentalAverageValue(
     double Avg,
     double Min,
     double Max
 );
 
+public record PlantationEnvironmentalMetrics(
+    EnvironmentalAverageValue AirTemperature,
+    EnvironmentalAverageValue SoilTemperature,
+    EnvironmentalAverageValue SoilMoisture
+);
+
 public record PlantationEnvironmentalAveragesResponse(
-    Dictionary<string, EnvironmentalAverageResponse> Metrics
+    PlantationEnvironmentalMetrics Metrics
+);
+
+// Plantation-Specific Timeseries Response Models
+
+public record PlantationEnvironmentalTimeseriesDataPoint(
+    DateTime Timestamp,
+    double AirTemperature,
+    double MinAirTemperature,
+    double MaxAirTemperature,
+    double SoilTemperature,
+    double MinSoilTemperature,
+    double MaxSoilTemperature,
+    double SoilMoisture,
+    int SampleCount
+);
+
+public record PlantationEnvironmentalTimeseriesResponse(
+    List<PlantationEnvironmentalTimeseriesDataPoint> DataPoints
+);
+
+public record PlantationHarvestTimeseriesDataPoint(
+    DateTime Timestamp,
+    double TotalYieldKg,
+    int HarvestCount,
+    double AverageYieldPerHarvest
+);
+
+public record PlantationHarvestTimeseriesResponse(
+    List<PlantationHarvestTimeseriesDataPoint> DataPoints
+);
+
+public record PlantationTreeGrowthDataPoint(
+    DateTime Timestamp,
+    int TotalTrees,
+    int ActiveTrees,
+    double TreesPerHectare
+);
+
+public record PlantationTreeGrowthTimeseriesResponse(
+    List<PlantationTreeGrowthDataPoint> DataPoints
 );

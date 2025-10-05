@@ -15,6 +15,7 @@ public class UpdatePlantationHarvestEndpoint : BaseEndpoint<UpdatePlantationHarv
     {
         Put("/");
         Group<PlantationHarvestsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(UpdatePlantationHarvestRequest req, CancellationToken ct)

@@ -7,19 +7,20 @@ using TbSense.Backend.Endpoints.Models;
 
 namespace TbSense.Backend.Endpoints.Endpoints.PlantationDashboard;
 
-public class GetPlantationHarvestCurrentMonthEndpoint : BaseEndpoint<PlantationIdRequest, PlantationHarvestSummaryResponse>
+public class GetPlantationTreeActivityChartEndpoint : BaseEndpoint<PlantationIdRequest, PlantationTreeActivityResponse>
 {
     public IPlantationDashboardService PlantationDashboardService { get; set; } = null!;
 
     public override void ConfigureEndpoint()
     {
-        Get("/summary/harvest-current-month");
+        Get("/{plantationId}/chart/tree-activity");
         Group<PlantationDashboardEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PlantationIdRequest req, CancellationToken ct)
     {
-        PlantationHarvestSummaryResponse result = await PlantationDashboardService.GetPlantationHarvestCurrentMonthAsync(req.PlantationId, ct);
-        await SendOkResponseAsync(result, "Plantation Current Month Harvest Retrieved Successfully", ct);
+        PlantationTreeActivityResponse result = await PlantationDashboardService.GetPlantationTreeActivityChartAsync(req.PlantationId, ct);
+        await SendOkResponseAsync(result, "Plantation Tree Activity Chart Retrieved Successfully", ct);
     }
 }

@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MasLazu.AspNet.Framework.EfCore.Postgresql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TbSense.Backend.EfCore\TbSense.Backend.EfCore.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -16,6 +16,7 @@ public class GetPlantationCoordinateByIdEndpoint : BaseEndpoint<IdRequest, Plant
     {
         Get("/{Id}");
         Group<PlantationCoordinatesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

@@ -15,6 +15,7 @@ public class DeletePlantationHarvestEndpoint : BaseEndpointWithoutResponse<IdReq
     {
         Delete("/{Id}");
         Group<PlantationHarvestsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

@@ -11,6 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" />
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="FluentStorage" />
     <PackageReference Include="FluentStorage.AWS" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />

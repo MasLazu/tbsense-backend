@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TbSense.Backend.Interfaces;
 using TbSense.Backend.EfCore.Data;
 using TbSense.Backend.Domain.Entities;
+using TbSense.Backend.Abstraction.Models;
 
 namespace TbSense.Backend.EfCore.Repositories;
 
@@ -14,26 +15,51 @@ public class DashboardRepository : IDashboardRepository
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
-    public async Task<(int total, int active)> GetPlantationsSummaryAsync(CancellationToken ct = default)
+    public async Task<PlantationsSummaryResponse> GetPlantationsSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
-        int total = await _context.Plantations.CountAsync(ct);
-        // Consider a plantation active if it has recent metrics (last 7 days) or recent harvests (last 30 days)
+        IQueryable<Plantation> query = _context.Plantations.AsQueryable();
+
+        if (startDate.HasValue)
+        {
+            var start = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+            query = query.Where(p => p.PlantedDate >= start);
+        }
+        if (endDate.HasValue)
+        {
+            var end = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+            query = query.Where(p => p.PlantedDate <= end);
+        }
+
+        int total = await query.CountAsync(ct);
+
         DateTime now = DateTime.UtcNow;
         DateTime sevenDaysAgo = now.AddDays(-7);
         DateTime thirtyDaysAgo = now.AddDays(-30);
 
-        int active = await _context.Plantations
+        int active = await query
             .Where(p => p.Trees.Any(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo)) ||
                        p.Harvests.Any(h => h.HarvestDate >= thirtyDaysAgo))
             .CountAsync(ct);
 
-        return (total, active);
+        return new PlantationsSummaryResponse(total, active);
     }
 
-    public async Task<(int total, double averagePerHectare)> GetTreesSummaryAsync(CancellationToken ct = default)
+    public async Task<TreesSummaryResponse> GetTreesSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
-        var data = await _context.Plantations
-            .Where(p => p.LandAreaHectares > 0)
+        IQueryable<Plantation> query = _context.Plantations.Where(p => p.LandAreaHectares > 0);
+
+        if (startDate.HasValue)
+        {
+            var start = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+            query = query.Where(p => p.PlantedDate >= start);
+        }
+        if (endDate.HasValue)
+        {
+            var end = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+            query = query.Where(p => p.PlantedDate <= end);
+        }
+
+        var data = await query
             .Select(p => new
             {
                 TreeCount = p.Trees.Count,
@@ -45,32 +71,50 @@ public class DashboardRepository : IDashboardRepository
         double totalLandArea = data.Sum(d => (double)d.LandArea);
         double averagePerHectare = totalLandArea > 0 ? total / totalLandArea : 0;
 
-        return (total, averagePerHectare);
+        return new TreesSummaryResponse(total, averagePerHectare);
     }
 
-    public async Task<(double totalHectares, double utilized, double utilizationRate)> GetLandAreaSummaryAsync(CancellationToken ct = default)
+    public async Task<LandAreaSummaryResponse> GetLandAreaSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
-        double totalHectares = await _context.Plantations
+        IQueryable<Plantation> query = _context.Plantations.AsQueryable();
+
+        if (startDate.HasValue)
+        {
+            var start = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+            query = query.Where(p => p.PlantedDate >= start);
+        }
+        if (endDate.HasValue)
+        {
+            var end = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+            query = query.Where(p => p.PlantedDate <= end);
+        }
+
+        double totalHectares = await query
             .SumAsync(p => (double)p.LandAreaHectares, ct);
 
-        // Consider land utilized if plantation has trees
-        double utilized = await _context.Plantations
+        double utilized = await query
             .Where(p => p.Trees.Any())
             .SumAsync(p => (double)p.LandAreaHectares, ct);
 
         double utilizationRate = totalHectares > 0 ? utilized / totalHectares * 100 : 0;
 
-        return (totalHectares, utilized, utilizationRate);
+        return new LandAreaSummaryResponse(totalHectares, utilized, utilizationRate);
     }
 
-    public async Task<(double totalYieldKg, double averageYieldPerHectare, int harvestCount)> GetHarvestCurrentMonthAsync(CancellationToken ct = default)
+    public async Task<HarvestSummaryResponse> GetHarvestSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
         DateTime now = DateTime.UtcNow;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1);
-        DateTime endOfMonth = startOfMonth.AddMonths(1);
+
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
 
         var harvests = await _context.PlantationHarvests
-            .Where(h => h.HarvestDate >= startOfMonth && h.HarvestDate < endOfMonth)
+            .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
             .Select(h => new { h.YieldKg, h.Plantation.LandAreaHectares })
             .ToListAsync(ct);
 
@@ -82,129 +126,849 @@ public class DashboardRepository : IDashboardRepository
 
         double averageYieldPerHectare = totalLandArea > 0 ? totalYieldKg / totalLandArea : 0;
 
-        return (totalYieldKg, averageYieldPerHectare, harvestCount);
+        return new HarvestSummaryResponse(totalYieldKg, averageYieldPerHectare, harvestCount);
     }
 
-    public async Task<(double totalYieldKg, double averageYieldPerHectare, int harvestCount)> GetHarvestCurrentYearAsync(CancellationToken ct = default)
+    public async Task<EnvironmentalMetricValue> GetEnvironmentalAveragesAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
         DateTime now = DateTime.UtcNow;
-        var startOfYear = new DateTime(now.Year, 1, 1);
 
-        var harvests = await _context.PlantationHarvests
-            .Where(h => h.HarvestDate >= startOfYear)
-            .Select(h => new { h.YieldKg, h.Plantation.LandAreaHectares })
-            .ToListAsync(ct);
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddDays(-1);
 
-        double totalYieldKg = harvests.Sum(h => (double)h.YieldKg);
-        int harvestCount = harvests.Count;
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
 
-        double totalLandArea = await _context.Plantations
-            .SumAsync(p => (double)p.LandAreaHectares, ct);
-
-        double averageYieldPerHectare = totalLandArea > 0 ? totalYieldKg / totalLandArea : 0;
-
-        return (totalYieldKg, averageYieldPerHectare, harvestCount);
-    }
-
-    public async Task<Dictionary<string, (double current, double[] optimal, string status)>> GetEnvironmentalAveragesAsync(CancellationToken ct = default)
-    {
-        DateTime now = DateTime.UtcNow;
-        DateTime oneDayAgo = now.AddDays(-1);
-
-        // Get recent metrics (last 24 hours)
         List<TreeMetric> recentMetrics = await _context.TreeMetrics
-            .Where(m => m.CreatedAt >= oneDayAgo)
+            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
             .ToListAsync(ct);
 
         if (!recentMetrics.Any())
         {
-            return new Dictionary<string, (double current, double[] optimal, string status)>();
+            return new EnvironmentalMetricValue(0, 0, 0);
         }
 
-        double avgTemperature = recentMetrics.Average(m => (double)m.AirTemperature);
+        double avgAirTemperature = recentMetrics.Average(m => (double)m.AirTemperature);
+        double avgSoilTemperature = recentMetrics.Average(m => (double)m.SoilTemperature);
         double avgSoilMoisture = recentMetrics.Average(m => (double)m.SoilMoisture);
-        double avgHumidity = 0.0; // TODO: Add when field exists
-        double avgLightIntensity = 0.0; // TODO: Add when field exists
 
-        var result = new Dictionary<string, (double current, double[] optimal, string status)>
-        {
-            ["temperature"] = (avgTemperature, new double[] { 22, 28 }, GetStatus(avgTemperature, 22, 28)),
-            ["soilMoisture"] = (avgSoilMoisture, new double[] { 40, 60 }, GetStatus(avgSoilMoisture, 40, 60)),
-            ["humidity"] = (avgHumidity, new double[] { 60, 80 }, "unknown"),
-            ["lightIntensity"] = (avgLightIntensity, new double[] { 400, 600 }, "unknown")
-        };
-
-        return result;
+        return new EnvironmentalMetricValue(avgAirTemperature, avgSoilTemperature, avgSoilMoisture);
     }
 
-    public async Task<(int plantationsInOptimalRange, int plantationsWithWarnings, int plantationsCritical, int total)> GetEnvironmentalStatusAsync(CancellationToken ct = default)
+    public async Task<List<EnvironmentalTimeseriesDataPoint>> GetEnvironmentalTimeseriesAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string interval = "daily",
+        CancellationToken ct = default)
     {
         DateTime now = DateTime.UtcNow;
-        DateTime oneDayAgo = now.AddDays(-1);
 
-        int total = await _context.Plantations.CountAsync(ct);
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddDays(-30);
 
-        // Get plantations with their recent average metrics
-        var plantationMetrics = await _context.Plantations
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<TreeMetric> metrics = await _context.TreeMetrics
+            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync(ct);
+
+        if (!metrics.Any())
+        {
+            return new List<EnvironmentalTimeseriesDataPoint>();
+        }
+
+        List<EnvironmentalTimeseriesDataPoint> dataPoints = interval.ToLower() switch
+        {
+            "hourly" => metrics
+                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour, 0, 0, DateTimeKind.Utc))
+                .Select(g => new EnvironmentalTimeseriesDataPoint(
+                    g.Key,
+                    g.Average(m => (double)m.AirTemperature),
+                    g.Min(m => (double)m.AirTemperature),
+                    g.Max(m => (double)m.AirTemperature),
+                    g.Average(m => (double)m.SoilTemperature),
+                    g.Min(m => (double)m.SoilTemperature),
+                    g.Max(m => (double)m.SoilTemperature),
+                    g.Average(m => (double)m.SoilMoisture),
+                    g.Count()
+                ))
+                .ToList(),
+
+            "weekly" => metrics
+                .GroupBy(m => GetWeekStart(m.CreatedAt.UtcDateTime))
+                .Select(g => new EnvironmentalTimeseriesDataPoint(
+                    g.Key,
+                    g.Average(m => (double)m.AirTemperature),
+                    g.Min(m => (double)m.AirTemperature),
+                    g.Max(m => (double)m.AirTemperature),
+                    g.Average(m => (double)m.SoilTemperature),
+                    g.Min(m => (double)m.SoilTemperature),
+                    g.Max(m => (double)m.SoilTemperature),
+                    g.Average(m => (double)m.SoilMoisture),
+                    g.Count()
+                ))
+                .ToList(),
+
+            "monthly" => metrics
+                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, 1, 0, 0, 0, DateTimeKind.Utc))
+                .Select(g => new EnvironmentalTimeseriesDataPoint(
+                    g.Key,
+                    g.Average(m => (double)m.AirTemperature),
+                    g.Min(m => (double)m.AirTemperature),
+                    g.Max(m => (double)m.AirTemperature),
+                    g.Average(m => (double)m.SoilTemperature),
+                    g.Min(m => (double)m.SoilTemperature),
+                    g.Max(m => (double)m.SoilTemperature),
+                    g.Average(m => (double)m.SoilMoisture),
+                    g.Count()
+                ))
+                .ToList(),
+
+            _ => metrics // daily (default)
+                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, 0, 0, 0, DateTimeKind.Utc))
+                .Select(g => new EnvironmentalTimeseriesDataPoint(
+                    g.Key,
+                    g.Average(m => (double)m.AirTemperature),
+                    g.Min(m => (double)m.AirTemperature),
+                    g.Max(m => (double)m.AirTemperature),
+                    g.Average(m => (double)m.SoilTemperature),
+                    g.Min(m => (double)m.SoilTemperature),
+                    g.Max(m => (double)m.SoilTemperature),
+                    g.Average(m => (double)m.SoilMoisture),
+                    g.Count()
+                ))
+                .ToList()
+        };
+
+        return dataPoints;
+    }
+
+    public async Task<List<HarvestTimeseriesDataPoint>> GetHarvestTimeseriesAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string interval = "monthly",
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<PlantationHarvest> harvests = await _context.PlantationHarvests
+            .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+            .OrderBy(h => h.HarvestDate)
+            .ToListAsync(ct);
+
+        if (!harvests.Any())
+        {
+            return new List<HarvestTimeseriesDataPoint>();
+        }
+
+        // Group by interval and calculate totals
+        List<HarvestTimeseriesDataPoint> dataPoints = interval.ToLower() switch
+        {
+            "daily" => harvests
+                .GroupBy(h => new DateTime(h.HarvestDate.Year, h.HarvestDate.Month, h.HarvestDate.Day, 0, 0, 0, DateTimeKind.Utc))
+                .Select(g => new HarvestTimeseriesDataPoint(
+                    g.Key,
+                    g.Sum(h => (double)h.YieldKg),
+                    g.Count(),
+                    g.Average(h => (double)h.YieldKg)
+                ))
+                .ToList(),
+
+            "weekly" => harvests
+                .GroupBy(h => GetWeekStart(h.HarvestDate))
+                .Select(g => new HarvestTimeseriesDataPoint(
+                    g.Key,
+                    g.Sum(h => (double)h.YieldKg),
+                    g.Count(),
+                    g.Average(h => (double)h.YieldKg)
+                ))
+                .ToList(),
+
+            "yearly" => harvests
+                .GroupBy(h => new DateTime(h.HarvestDate.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc))
+                .Select(g => new HarvestTimeseriesDataPoint(
+                    g.Key,
+                    g.Sum(h => (double)h.YieldKg),
+                    g.Count(),
+                    g.Average(h => (double)h.YieldKg)
+                ))
+                .ToList(),
+
+            _ => harvests // monthly (default)
+                .GroupBy(h => new DateTime(h.HarvestDate.Year, h.HarvestDate.Month, 1, 0, 0, 0, DateTimeKind.Utc))
+                .Select(g => new HarvestTimeseriesDataPoint(
+                    g.Key,
+                    g.Sum(h => (double)h.YieldKg),
+                    g.Count(),
+                    g.Average(h => (double)h.YieldKg)
+                ))
+                .ToList()
+        };
+
+        return dataPoints;
+    }
+
+    public async Task<List<PlantationGrowthDataPoint>> GetPlantationGrowthTimeseriesAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string interval = "monthly",
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<Plantation> plantations = await _context.Plantations
+            .Include(p => p.Trees)
+            .Where(p => p.CreatedAt <= endDate_effective)
+            .ToListAsync(ct);
+
+        if (!plantations.Any())
+        {
+            return new List<PlantationGrowthDataPoint>();
+        }
+
+        List<DateTime> timePoints = GenerateTimePoints(startDate_effective, endDate_effective, interval);
+
+        var dataPoints = timePoints.Select(timestamp =>
+        {
+            var existingPlantations = plantations
+                .Where(p => p.CreatedAt <= timestamp)
+                .ToList();
+
+            int totalPlantations = existingPlantations.Count;
+            double totalLandArea = existingPlantations.Sum(p => p.LandAreaHectares);
+
+            int totalTrees = existingPlantations
+                .SelectMany(p => p.Trees)
+                .Count(t => t.CreatedAt <= timestamp);
+
+            DateTime sevenDaysBeforeTimestamp = timestamp.AddDays(-7);
+            DateTime thirtyDaysBeforeTimestamp = timestamp.AddDays(-30);
+
+            int activePlantations = existingPlantations
+                .Count(p =>
+                    p.Trees.Any(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysBeforeTimestamp && m.CreatedAt <= timestamp)) ||
+                    p.Harvests.Any(h => h.HarvestDate >= thirtyDaysBeforeTimestamp && h.HarvestDate <= timestamp));
+
+            return new PlantationGrowthDataPoint(
+                timestamp,
+                totalPlantations,
+                activePlantations,
+                totalTrees,
+                totalLandArea
+            );
+        }).ToList();
+
+        return dataPoints;
+    }
+
+    private static List<DateTime> GenerateTimePoints(DateTime startDate, DateTime endDate, string interval)
+    {
+        List<DateTime> timePoints = new();
+        DateTime current = interval.ToLower() switch
+        {
+            "daily" => new DateTime(startDate.Year, startDate.Month, startDate.Day, 0, 0, 0, DateTimeKind.Utc),
+            "weekly" => GetWeekStart(startDate),
+            "yearly" => new DateTime(startDate.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            _ => new DateTime(startDate.Year, startDate.Month, 1, 0, 0, 0, DateTimeKind.Utc) // monthly default
+        };
+
+        while (current <= endDate)
+        {
+            timePoints.Add(current);
+            current = interval.ToLower() switch
+            {
+                "daily" => current.AddDays(1),
+                "weekly" => current.AddDays(7),
+                "yearly" => current.AddYears(1),
+                _ => current.AddMonths(1) // monthly default
+            };
+        }
+
+        return timePoints;
+    }
+
+    private static DateTime GetWeekStart(DateTime date)
+    {
+        int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return new DateTime(date.Year, date.Month, date.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(-diff);
+    }
+
+    // Chart Methods
+
+    public async Task<List<PlantationDistributionItem>> GetPlantationsByTreesChartAsync(CancellationToken ct = default)
+    {
+        var data = await _context.Plantations
             .Select(p => new
             {
-                PlantationId = p.Id,
-                RecentMetrics = p.Trees
-                    .SelectMany(t => t.Metrics.Where(m => m.CreatedAt >= oneDayAgo))
+                p.Id,
+                p.Name,
+                TreeCount = p.Trees.Count
+            })
+            .ToListAsync(ct);
+
+        int totalTrees = data.Sum(d => d.TreeCount);
+
+        return data
+            .OrderByDescending(d => d.TreeCount)
+            .Select(d => new PlantationDistributionItem(
+                d.Id,
+                d.Name,
+                d.TreeCount,
+                totalTrees > 0 ? Math.Round((double)d.TreeCount / totalTrees * 100, 2) : 0
+            ))
+            .ToList();
+    }
+
+    public async Task<List<PlantationLandDistributionItem>> GetPlantationsByLandAreaChartAsync(CancellationToken ct = default)
+    {
+        var data = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                p.LandAreaHectares
+            })
+            .ToListAsync(ct);
+
+        double totalLandArea = data.Sum(d => d.LandAreaHectares);
+
+        return data
+            .OrderByDescending(d => d.LandAreaHectares)
+            .Select(d => new PlantationLandDistributionItem(
+                d.Id,
+                d.Name,
+                d.LandAreaHectares,
+                totalLandArea > 0 ? Math.Round(d.LandAreaHectares / totalLandArea * 100, 2) : 0
+            ))
+            .ToList();
+    }
+
+    public async Task<List<HarvestDistributionItem>> GetHarvestByPlantationChartAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+
+        // Default to last 12 months
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        var data = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                Harvests = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Select(h => h.YieldKg)
                     .ToList()
             })
             .ToListAsync(ct);
 
-        int optimal = 0;
-        int warnings = 0;
-        int critical = 0;
-
-        foreach (var pm in plantationMetrics)
-        {
-            if (!pm.RecentMetrics.Any())
+        var summary = data
+            .Select(d => new
             {
-                warnings++; // No recent data is a warning
-                continue;
-            }
+                d.Id,
+                d.Name,
+                TotalYieldKg = d.Harvests.Sum(y => (double)y),
+                HarvestCount = d.Harvests.Count
+            })
+            .Where(d => d.HarvestCount > 0)
+            .ToList();
 
-            double avgTemp = pm.RecentMetrics.Average(m => (double)m.AirTemperature);
-            double avgSoilMoisture = pm.RecentMetrics.Average(m => (double)m.SoilMoisture);
+        double totalYieldKg = summary.Sum(d => d.TotalYieldKg);
 
-            bool tempOptimal = avgTemp >= 22 && avgTemp <= 28;
-            bool soilOptimal = avgSoilMoisture >= 40 && avgSoilMoisture <= 60;
-
-            bool tempCritical = avgTemp < 18 || avgTemp > 32;
-            bool soilCritical = avgSoilMoisture < 30 || avgSoilMoisture > 70;
-
-            if (tempCritical || soilCritical)
-            {
-                critical++;
-            }
-            else if (!tempOptimal || !soilOptimal)
-            {
-                warnings++;
-            }
-            else
-            {
-                optimal++;
-            }
-        }
-
-        return (optimal, warnings, critical, total);
+        return summary
+            .OrderByDescending(d => d.TotalYieldKg)
+            .Select(d => new HarvestDistributionItem(
+                d.Id,
+                d.Name,
+                Math.Round(d.TotalYieldKg, 2),
+                d.HarvestCount,
+                totalYieldKg > 0 ? Math.Round(d.TotalYieldKg / totalYieldKg * 100, 2) : 0
+            ))
+            .ToList();
     }
 
-    private static string GetStatus(double value, double min, double max)
+    public async Task<List<TreeActivityStatusItem>> GetTreeActivityStatusChartAsync(CancellationToken ct = default)
     {
-        if (value >= min && value <= max)
-        {
-            return "optimal";
-        }
+        DateTime now = DateTime.UtcNow;
+        DateTime sevenDaysAgo = now.AddDays(-7);
 
-        if (value < min - 5 || value > max + 5)
-        {
-            return "critical";
-        }
+        List<Tree> allTrees = await _context.Trees.ToListAsync(ct);
+        List<Guid> treeIdsWithRecentMetrics = await _context.TreeMetrics
+            .Where(m => m.CreatedAt >= sevenDaysAgo)
+            .Select(m => m.TreeId)
+            .Distinct()
+            .ToListAsync(ct);
 
-        return "warning";
+        int activeTrees = treeIdsWithRecentMetrics.Count;
+        int inactiveTrees = allTrees.Count - activeTrees;
+        int totalTrees = allTrees.Count;
+
+        return new List<TreeActivityStatusItem>
+        {
+            new TreeActivityStatusItem(
+                "Active",
+                activeTrees,
+                totalTrees > 0 ? Math.Round((double)activeTrees / totalTrees * 100, 2) : 0
+            ),
+            new TreeActivityStatusItem(
+                "Inactive",
+                inactiveTrees,
+                totalTrees > 0 ? Math.Round((double)inactiveTrees / totalTrees * 100, 2) : 0
+            )
+        };
+    }
+
+    public async Task<List<PlantationYieldComparisonItem>> GetTopPlantationsByYieldChartAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int limit = 10,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<PlantationYieldComparisonItem> items = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                TotalYieldKg = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Sum(h => (double)h.YieldKg),
+                HarvestCount = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Count()
+            })
+            .Where(p => p.HarvestCount > 0)
+            .OrderByDescending(p => p.TotalYieldKg)
+            .Take(limit)
+            .Select(p => new PlantationYieldComparisonItem(
+                p.Id,
+                p.Name,
+                p.TotalYieldKg,
+                p.HarvestCount
+            ))
+            .ToListAsync(ct);
+
+        return items;
+    }
+
+    public async Task<List<PlantationAvgHarvestComparisonItem>> GetTopPlantationsByAvgHarvestChartAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int limit = 10,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        var items = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                TotalYield = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Sum(h => (double)h.YieldKg),
+                HarvestCount = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Count()
+            })
+            .Where(p => p.HarvestCount > 0)
+            .OrderByDescending(p => p.TotalYield / p.HarvestCount)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        return items.Select(p => new PlantationAvgHarvestComparisonItem(
+            p.Id,
+            p.Name,
+            Math.Round(p.TotalYield / p.HarvestCount, 2),
+            p.HarvestCount
+        )).ToList();
+    }
+
+    public async Task<List<PlantationTreeCountComparisonItem>> GetTreeCountByPlantationChartAsync(
+        int limit = 10,
+        CancellationToken ct = default)
+    {
+        List<PlantationTreeCountComparisonItem> items = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                TreeCount = p.Trees.Count,
+                p.LandAreaHectares,
+                TreesPerHectare = p.LandAreaHectares > 0 ? Math.Round(p.Trees.Count / p.LandAreaHectares, 2) : 0
+            })
+            .OrderByDescending(p => p.TreeCount)
+            .Take(limit)
+            .Select(p => new PlantationTreeCountComparisonItem(
+                p.Id,
+                p.Name,
+                p.TreeCount,
+                p.LandAreaHectares,
+                p.TreesPerHectare
+            ))
+            .ToListAsync(ct);
+
+        return items;
+    }
+
+    public async Task<List<PlantationActivityComparisonItem>> GetTreeActivityByPlantationChartAsync(
+        CancellationToken ct = default)
+    {
+        DateTime sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+
+        List<PlantationActivityComparisonItem> items = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                ActiveTrees = p.Trees.Count(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo)),
+                InactiveTrees = p.Trees.Count(t => !t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo)),
+                TotalTrees = p.Trees.Count
+            })
+            .OrderByDescending(p => p.TotalTrees)
+            .Select(p => new PlantationActivityComparisonItem(
+                p.Id,
+                p.Name,
+                p.ActiveTrees,
+                p.InactiveTrees,
+                p.TotalTrees
+            ))
+            .ToListAsync(ct);
+
+        return items;
+    }
+
+    public async Task<List<PlantationHarvestFrequencyItem>> GetHarvestFrequencyByPlantationChartAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        var items = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                HarvestCount = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Count(),
+                TotalYield = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Sum(h => (double)h.YieldKg)
+            })
+            .Where(p => p.HarvestCount > 0)
+            .OrderByDescending(p => p.HarvestCount)
+            .ToListAsync(ct);
+
+        return items.Select(p => new PlantationHarvestFrequencyItem(
+            p.Id,
+            p.Name,
+            p.HarvestCount,
+            p.TotalYield,
+            Math.Round(p.TotalYield / p.HarvestCount, 2)
+        )).ToList();
+    }
+
+    // Histogram methods
+    public async Task<List<double>> GetYieldDistributionDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<double> yields = await _context.Plantations
+            .Select(p => p.Harvests
+                .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                .Sum(h => (double)h.YieldKg))
+            .Where(y => y > 0)
+            .ToListAsync(ct);
+
+        return yields;
+    }
+
+    public async Task<List<double>> GetPlantationSizeDistributionDataAsync(CancellationToken ct = default)
+    {
+        List<double> sizes = await _context.Plantations
+            .Select(p => (double)p.LandAreaHectares)
+            .Where(s => s > 0)
+            .ToListAsync(ct);
+
+        return sizes;
+    }
+
+    public async Task<List<double>> GetTreeDensityDistributionDataAsync(CancellationToken ct = default)
+    {
+        List<double> densities = await _context.Plantations
+            .Where(p => p.LandAreaHectares > 0)
+            .Select(p => (double)p.Trees.Count / (double)p.LandAreaHectares)
+            .ToListAsync(ct);
+
+        return densities;
+    }
+
+    public async Task<List<double>> GetHarvestFrequencyDistributionDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<double> frequencies = await _context.Plantations
+            .Select(p => (double)p.Harvests
+                .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                .Count())
+            .Where(f => f > 0)
+            .ToListAsync(ct);
+
+        return frequencies;
+    }
+
+    public async Task<List<double>> GetAvgHarvestSizeDistributionDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddMonths(-12);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        var data = await _context.Plantations
+            .Select(p => new
+            {
+                TotalYield = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Sum(h => (double)h.YieldKg),
+                HarvestCount = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Count()
+            })
+            .Where(p => p.HarvestCount > 0)
+            .ToListAsync(ct);
+
+        return data.Select(p => p.TotalYield / p.HarvestCount).ToList();
+    }
+
+    // Area chart data methods
+    public async Task<List<(DateTime Date, double Value)>> GetCumulativeYieldDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddYears(-1);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        var harvests = await _context.Plantations
+            .SelectMany(p => p.Harvests)
+            .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+            .OrderBy(h => h.HarvestDate)
+            .Select(h => new { h.HarvestDate, Yield = (double)h.YieldKg })
+            .ToListAsync(ct);
+
+        return harvests.Select(h => (h.HarvestDate, h.Yield)).ToList();
+    }
+
+    public async Task<List<(DateTime Date, int Count)>> GetCumulativeHarvestCountDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddYears(-1);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<DateTime> harvests = await _context.Plantations
+            .SelectMany(p => p.Harvests)
+            .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+            .OrderBy(h => h.HarvestDate)
+            .Select(h => h.HarvestDate)
+            .ToListAsync(ct);
+
+        return harvests.Select(date => (date, 1)).ToList();
+    }
+
+    public async Task<List<(DateTime Date, int Count)>> GetPlantationGrowthDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddYears(-2);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<DateTime> plantations = await _context.Plantations
+            .Where(p => p.CreatedAt >= startDate_effective && p.CreatedAt <= endDate_effective)
+            .OrderBy(p => p.CreatedAt)
+            .Select(p => p.CreatedAt.DateTime)
+            .ToListAsync(ct);
+
+        return plantations.Select(date => (date, 1)).ToList();
+    }
+
+    public async Task<List<(DateTime Date, int Count)>> GetTreePopulationGrowthDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddYears(-2);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<DateTime> trees = await _context.Trees
+            .Where(t => t.CreatedAt >= startDate_effective && t.CreatedAt <= endDate_effective)
+            .OrderBy(t => t.CreatedAt)
+            .Select(t => t.CreatedAt.DateTime)
+            .ToListAsync(ct);
+
+        return trees.Select(date => (date, 1)).ToList();
+    }
+
+    public async Task<List<(DateTime Date, int Count)>> GetCumulativeActiveTreesDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddYears(-1);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        List<DateTime> treeMetrics = await _context.TreeMetrics
+            .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
+            .GroupBy(m => new { m.Timestamp.Date, m.TreeId })
+            .Select(g => new { g.Key.Date, g.Key.TreeId })
+            .OrderBy(x => x.Date)
+            .Select(x => x.Date)
+            .ToListAsync(ct);
+
+        return treeMetrics.Select(date => (date, 1)).ToList();
+    }
+
+    public async Task<List<(DateTime Date, string PlantationName, double Yield)>> GetStackedYieldByPlantationDataAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int limit = 5,
+        CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime startDate_effective = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddYears(-1);
+        DateTime endDate_effective = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        // Get top plantations by total yield
+        List<Guid> topPlantations = await _context.Plantations
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                TotalYield = p.Harvests
+                    .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+                    .Sum(h => (double)h.YieldKg)
+            })
+            .OrderByDescending(p => p.TotalYield)
+            .Take(limit)
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+
+        var harvestData = await _context.Plantations
+            .Where(p => topPlantations.Contains(p.Id))
+            .SelectMany(p => p.Harvests.Select(h => new { h.HarvestDate, p.Name, Yield = (double)h.YieldKg }))
+            .Where(h => h.HarvestDate >= startDate_effective && h.HarvestDate <= endDate_effective)
+            .OrderBy(h => h.HarvestDate)
+            .ToListAsync(ct);
+
+        return harvestData.Select(h => (h.HarvestDate, h.Name, h.Yield)).ToList();
     }
 }
+
+

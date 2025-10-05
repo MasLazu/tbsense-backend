@@ -15,6 +15,7 @@ public class DeleteTreeEndpoint : BaseEndpointWithoutResponse<IdRequest>
     {
         Delete("/{Id}");
         Group<TreesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

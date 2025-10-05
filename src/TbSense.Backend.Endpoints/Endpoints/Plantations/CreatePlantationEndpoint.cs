@@ -15,6 +15,7 @@ public class CreatePlantationEndpoint : BaseEndpoint<CreatePlantationRequest, Pl
     {
         Post("/");
         Group<PlantationsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(CreatePlantationRequest req, CancellationToken ct)

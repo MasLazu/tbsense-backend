@@ -16,6 +16,7 @@ public class GetPlantationYieldPredictionByIdEndpoint : BaseEndpoint<IdRequest, 
     {
         Get("/{Id}");
         Group<PlantationYieldPredictionsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

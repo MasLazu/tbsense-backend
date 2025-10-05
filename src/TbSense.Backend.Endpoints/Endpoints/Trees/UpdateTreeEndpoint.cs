@@ -15,6 +15,7 @@ public class UpdateTreeEndpoint : BaseEndpoint<UpdateTreeRequest, TreeDto>
     {
         Put("/");
         Group<TreesEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(UpdateTreeRequest req, CancellationToken ct)

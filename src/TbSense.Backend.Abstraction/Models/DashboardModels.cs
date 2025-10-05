@@ -24,19 +24,53 @@ public record HarvestSummaryResponse(
     int HarvestCount
 );
 
-public record EnvironmentalMetricResponse(
-    double Current,
-    double[] Optimal,
-    string Status
+public record EnvironmentalMetricValue(
+    double AirTemperature,
+    double SoilTemperature,
+    double SoilMoisture
 );
 
 public record EnvironmentalAveragesResponse(
-    Dictionary<string, EnvironmentalMetricResponse> Metrics
+    EnvironmentalMetricValue Metrics
 );
 
-public record EnvironmentalStatusResponse(
-    int PlantationsInOptimalRange,
-    int PlantationsWithWarnings,
-    int PlantationsCritical,
-    int Total
+// Timeseries Response Models
+
+public record EnvironmentalTimeseriesDataPoint(
+    DateTime Timestamp,
+    double AirTemperature,
+    double MinAirTemperature,
+    double MaxAirTemperature,
+    double SoilTemperature,
+    double MinSoilTemperature,
+    double MaxSoilTemperature,
+    double SoilMoisture,
+    int SampleCount
+);
+
+public record EnvironmentalTimeseriesResponse(
+    List<EnvironmentalTimeseriesDataPoint> DataPoints
+);
+
+public record HarvestTimeseriesDataPoint(
+    DateTime Timestamp,
+    double TotalYieldKg,
+    int HarvestCount,
+    double AverageYieldPerHarvest
+);
+
+public record HarvestTimeseriesResponse(
+    List<HarvestTimeseriesDataPoint> DataPoints
+);
+
+public record PlantationGrowthDataPoint(
+    DateTime Timestamp,
+    int TotalPlantations,
+    int ActivePlantations,
+    int TotalTrees,
+    double TotalLandAreaHectares
+);
+
+public record PlantationGrowthTimeseriesResponse(
+    List<PlantationGrowthDataPoint> DataPoints
 );

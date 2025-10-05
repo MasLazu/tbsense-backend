@@ -15,6 +15,7 @@ public class GetTreeMetricsPaginatedEndpoint : BaseEndpoint<PaginationRequest, P
     {
         Post("/paginated");
         Group<TreeMetricsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PaginationRequest req, CancellationToken ct)

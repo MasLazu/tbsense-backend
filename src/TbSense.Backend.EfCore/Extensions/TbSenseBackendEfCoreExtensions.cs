@@ -11,7 +11,7 @@ namespace TbSense.Backend.EfCore.Extensions;
 
 public static class TbSenseBackendEfCoreExtensions
 {
-    public static IServiceCollection AddTbSenseBackendEntityFrameworkCore(this IServiceCollection services)
+    public static IServiceCollection AddTbSenseBackendEfCore(this IServiceCollection services)
     {
         services.AddScoped<IRepository<Plantation>, Repository<Plantation, TbSenseBackendDbContext>>();
         services.AddScoped<IRepository<PlantationCoordinate>, Repository<PlantationCoordinate, TbSenseBackendDbContext>>();
@@ -33,6 +33,7 @@ public static class TbSenseBackendEfCoreExtensions
         services.AddScoped<ITrainingDataRepository, TrainingDataRepository>();
         services.AddScoped<IDashboardRepository, DashboardRepository>();
         services.AddScoped<IPlantationDashboardRepository, PlantationDashboardRepository>();
+        services.AddScoped<ITreeDashboardRepository, TreeDashboardRepository>();
 
         services.AddScoped<BaseDbContext>(sp => sp.GetRequiredService<TbSenseBackendDbContext>());
 

@@ -16,6 +16,7 @@ public class GetTreeMetricByIdEndpoint : BaseEndpoint<IdRequest, TreeMetricDto>
     {
         Get("/{Id}");
         Group<TreeMetricsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)
