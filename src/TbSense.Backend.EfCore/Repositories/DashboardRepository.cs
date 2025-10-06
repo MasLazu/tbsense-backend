@@ -17,28 +17,25 @@ public class DashboardRepository : IDashboardRepository
 
     public async Task<PlantationsSummaryResponse> GetPlantationsSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
-        IQueryable<Plantation> query = _context.Plantations.AsQueryable();
-
-        if (startDate.HasValue)
-        {
-            var start = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
-            query = query.Where(p => p.PlantedDate >= start);
-        }
-        if (endDate.HasValue)
-        {
-            var end = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
-            query = query.Where(p => p.PlantedDate <= end);
-        }
-
-        int total = await query.CountAsync(ct);
+        // Get all plantations (date filters don't apply to plantation count)
+        int total = await _context.Plantations.CountAsync(ct);
 
         DateTime now = DateTime.UtcNow;
-        DateTime sevenDaysAgo = now.AddDays(-7);
-        DateTime thirtyDaysAgo = now.AddDays(-30);
 
-        int active = await query
-            .Where(p => p.Trees.Any(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo)) ||
-                       p.Harvests.Any(h => h.HarvestDate >= thirtyDaysAgo))
+        // If dates are provided, use them for activity check, otherwise use default ranges
+        DateTime activityStartForMetrics = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddDays(-7);
+        DateTime activityStartForHarvests = startDate.HasValue
+            ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc)
+            : now.AddDays(-30);
+        DateTime activityEnd = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
+            : now;
+
+        int active = await _context.Plantations
+            .Where(p => p.Trees.Any(t => t.Metrics.Any(m => m.Timestamp >= activityStartForMetrics && m.Timestamp <= activityEnd)) ||
+                       p.Harvests.Any(h => h.HarvestDate >= activityStartForHarvests && h.HarvestDate <= activityEnd))
             .CountAsync(ct);
 
         return new PlantationsSummaryResponse(total, active);
@@ -46,18 +43,8 @@ public class DashboardRepository : IDashboardRepository
 
     public async Task<TreesSummaryResponse> GetTreesSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
+        // Get all plantations with land area (date filters don't apply to tree/plantation counts)
         IQueryable<Plantation> query = _context.Plantations.Where(p => p.LandAreaHectares > 0);
-
-        if (startDate.HasValue)
-        {
-            var start = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
-            query = query.Where(p => p.PlantedDate >= start);
-        }
-        if (endDate.HasValue)
-        {
-            var end = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
-            query = query.Where(p => p.PlantedDate <= end);
-        }
 
         var data = await query
             .Select(p => new
@@ -76,18 +63,8 @@ public class DashboardRepository : IDashboardRepository
 
     public async Task<LandAreaSummaryResponse> GetLandAreaSummaryAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
+        // Get all plantations (date filters don't apply to land area counts)
         IQueryable<Plantation> query = _context.Plantations.AsQueryable();
-
-        if (startDate.HasValue)
-        {
-            var start = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
-            query = query.Where(p => p.PlantedDate >= start);
-        }
-        if (endDate.HasValue)
-        {
-            var end = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
-            query = query.Where(p => p.PlantedDate <= end);
-        }
 
         double totalHectares = await query
             .SumAsync(p => (double)p.LandAreaHectares, ct);
@@ -142,7 +119,7 @@ public class DashboardRepository : IDashboardRepository
             : now;
 
         List<TreeMetric> recentMetrics = await _context.TreeMetrics
-            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+            .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
             .ToListAsync(ct);
 
         if (!recentMetrics.Any())
@@ -174,8 +151,8 @@ public class DashboardRepository : IDashboardRepository
             : now;
 
         List<TreeMetric> metrics = await _context.TreeMetrics
-            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
-            .OrderBy(m => m.CreatedAt)
+            .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
+            .OrderBy(m => m.Timestamp)
             .ToListAsync(ct);
 
         if (!metrics.Any())
@@ -186,7 +163,7 @@ public class DashboardRepository : IDashboardRepository
         List<EnvironmentalTimeseriesDataPoint> dataPoints = interval.ToLower() switch
         {
             "hourly" => metrics
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, m.Timestamp.Day, m.Timestamp.Hour, 0, 0, DateTimeKind.Utc))
                 .Select(g => new EnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -201,7 +178,7 @@ public class DashboardRepository : IDashboardRepository
                 .ToList(),
 
             "weekly" => metrics
-                .GroupBy(m => GetWeekStart(m.CreatedAt.UtcDateTime))
+                .GroupBy(m => GetWeekStart(m.Timestamp))
                 .Select(g => new EnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -216,7 +193,7 @@ public class DashboardRepository : IDashboardRepository
                 .ToList(),
 
             "monthly" => metrics
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, 1, 0, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, 1, 0, 0, 0, DateTimeKind.Utc))
                 .Select(g => new EnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -231,7 +208,7 @@ public class DashboardRepository : IDashboardRepository
                 .ToList(),
 
             _ => metrics // daily (default)
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, 0, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, m.Timestamp.Day, 0, 0, 0, DateTimeKind.Utc))
                 .Select(g => new EnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -368,7 +345,7 @@ public class DashboardRepository : IDashboardRepository
 
             int activePlantations = existingPlantations
                 .Count(p =>
-                    p.Trees.Any(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysBeforeTimestamp && m.CreatedAt <= timestamp)) ||
+                    p.Trees.Any(t => t.Metrics.Any(m => m.Timestamp >= sevenDaysBeforeTimestamp && m.Timestamp <= timestamp)) ||
                     p.Harvests.Any(h => h.HarvestDate >= thirtyDaysBeforeTimestamp && h.HarvestDate <= timestamp));
 
             return new PlantationGrowthDataPoint(
@@ -525,7 +502,7 @@ public class DashboardRepository : IDashboardRepository
 
         List<Tree> allTrees = await _context.Trees.ToListAsync(ct);
         List<Guid> treeIdsWithRecentMetrics = await _context.TreeMetrics
-            .Where(m => m.CreatedAt >= sevenDaysAgo)
+            .Where(m => m.Timestamp >= sevenDaysAgo)
             .Select(m => m.TreeId)
             .Distinct()
             .ToListAsync(ct);
@@ -665,8 +642,8 @@ public class DashboardRepository : IDashboardRepository
             {
                 p.Id,
                 p.Name,
-                ActiveTrees = p.Trees.Count(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo)),
-                InactiveTrees = p.Trees.Count(t => !t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo)),
+                ActiveTrees = p.Trees.Count(t => t.Metrics.Any(m => m.Timestamp >= sevenDaysAgo)),
+                InactiveTrees = p.Trees.Count(t => !t.Metrics.Any(m => m.Timestamp >= sevenDaysAgo)),
                 TotalTrees = p.Trees.Count
             })
             .OrderByDescending(p => p.TotalTrees)

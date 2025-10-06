@@ -34,7 +34,7 @@ public class TrainingDataRepository : ITrainingDataRepository
                 TreeCount = p.Trees.Count,
                 MetricsData = p.Trees
                     .SelectMany(t => t.Metrics
-                        .Where(m => m.CreatedAt >= startDate && m.CreatedAt <= endDate))
+                        .Where(m => m.Timestamp >= startDate && m.Timestamp <= endDate))
                     .GroupBy(m => 1)
                     .Select(g => new
                     {

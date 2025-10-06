@@ -37,10 +37,27 @@ builder.Services.ConfigureStorageService(builder.Configuration);
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    IConfigurationSection corsConfig = builder.Configuration.GetSection("Cors");
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(corsConfig.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>());
+        policy.WithMethods(corsConfig.GetSection("AllowedMethods").Get<string[]>() ?? Array.Empty<string>());
+        policy.WithHeaders(corsConfig.GetSection("AllowedHeaders").Get<string[]>() ?? Array.Empty<string>());
+        if (corsConfig.GetValue<bool>("AllowCredentials"))
+        {
+            policy.AllowCredentials();
+        }
+    });
+});
+
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
+app.UseCors();
 app.UseFrameworkExceptionHandlerMiddleware();
 app.UseFastEndpoints(c =>
 {

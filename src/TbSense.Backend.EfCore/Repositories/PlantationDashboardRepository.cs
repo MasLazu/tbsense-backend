@@ -59,7 +59,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
             {
                 TotalTrees = p.Trees.Count,
                 LandArea = p.LandAreaHectares,
-                ActiveTrees = p.Trees.Count(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo))
+                ActiveTrees = p.Trees.Count(t => t.Metrics.Any(m => m.Timestamp >= sevenDaysAgo))
             })
             .FirstOrDefaultAsync(ct);
 
@@ -182,8 +182,8 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
         DateTime oneDayAgo = now.AddDays(-1);
 
         List<TreeMetric> metrics = await _context.TreeMetrics
-            .Where(m => m.Tree.PlantationId == plantationId && m.CreatedAt >= oneDayAgo)
-            .OrderByDescending(m => m.CreatedAt)
+            .Where(m => m.Tree.PlantationId == plantationId && m.Timestamp >= oneDayAgo)
+            .OrderByDescending(m => m.Timestamp)
             .ToListAsync(ct);
 
         if (!metrics.Any())
@@ -194,9 +194,9 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
         double avgAirTemperature = metrics.Average(m => (double)m.AirTemperature);
         double avgSoilTemperature = metrics.Average(m => (double)m.SoilTemperature);
         double avgSoilMoisture = metrics.Average(m => (double)m.SoilMoisture);
-        DateTimeOffset lastUpdated = metrics.Max(m => m.CreatedAt);
+        DateTime lastUpdated = metrics.Max(m => m.Timestamp);
 
-        return new PlantationCurrentMetricsResponse(avgAirTemperature, avgSoilTemperature, avgSoilMoisture, lastUpdated.DateTime);
+        return new PlantationCurrentMetricsResponse(avgAirTemperature, avgSoilTemperature, avgSoilMoisture, lastUpdated);
     }
 
     public async Task<PlantationEnvironmentalMetrics> GetPlantationEnvironmentalAveragesAsync(Guid plantationId, int days, CancellationToken ct = default)
@@ -205,7 +205,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
         DateTime startDate = now.AddDays(-days);
 
         List<TreeMetric> metrics = await _context.TreeMetrics
-            .Where(m => m.Tree.PlantationId == plantationId && m.CreatedAt >= startDate)
+            .Where(m => m.Tree.PlantationId == plantationId && m.Timestamp >= startDate)
             .ToListAsync(ct);
 
         if (!metrics.Any())
@@ -248,9 +248,9 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
         List<TreeMetric> metrics = await _context.TreeMetrics
             .Where(m => m.Tree.PlantationId == plantationId &&
-                       m.CreatedAt >= startDate_effective &&
-                       m.CreatedAt <= endDate_effective)
-            .OrderBy(m => m.CreatedAt)
+                       m.Timestamp >= startDate_effective &&
+                       m.Timestamp <= endDate_effective)
+            .OrderBy(m => m.Timestamp)
             .ToListAsync(ct);
 
         if (!metrics.Any())
@@ -262,7 +262,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
         List<PlantationEnvironmentalTimeseriesDataPoint> dataPoints = interval.ToLower() switch
         {
             "hourly" => metrics
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, m.Timestamp.Day, m.Timestamp.Hour, 0, 0, DateTimeKind.Utc))
                 .Select(g => new PlantationEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -277,7 +277,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
                 .ToList(),
 
             "weekly" => metrics
-                .GroupBy(m => GetWeekStart(m.CreatedAt.UtcDateTime))
+                .GroupBy(m => GetWeekStart(m.Timestamp))
                 .Select(g => new PlantationEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -292,7 +292,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
                 .ToList(),
 
             "monthly" => metrics
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, 1, 0, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, 1, 0, 0, 0, DateTimeKind.Utc))
                 .Select(g => new PlantationEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -307,7 +307,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
                 .ToList(),
 
             _ => metrics // daily (default)
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, 0, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, m.Timestamp.Day, 0, 0, 0, DateTimeKind.Utc))
                 .Select(g => new PlantationEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -446,7 +446,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
             DateTime sevenDaysBeforeTimestamp = timestamp.AddDays(-7);
             int activeTrees = existingTrees
-                .Count(t => t.Metrics.Any(m => m.CreatedAt >= sevenDaysBeforeTimestamp && m.CreatedAt <= timestamp));
+                .Count(t => t.Metrics.Any(m => m.Timestamp >= sevenDaysBeforeTimestamp && m.Timestamp <= timestamp));
 
             double treesPerHectare = plantation.LandAreaHectares > 0
                 ? totalTrees / plantation.LandAreaHectares
@@ -468,7 +468,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
         DateTime sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
         int activeTrees = await _context.Trees
-            .Where(t => t.PlantationId == plantationId && t.Metrics.Any(m => m.CreatedAt >= sevenDaysAgo))
+            .Where(t => t.PlantationId == plantationId && t.Metrics.Any(m => m.Timestamp >= sevenDaysAgo))
             .CountAsync(ct);
 
         int totalTrees = await _context.Trees

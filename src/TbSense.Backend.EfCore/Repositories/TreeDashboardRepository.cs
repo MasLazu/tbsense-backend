@@ -41,7 +41,7 @@ public class TreeDashboardRepository : ITreeDashboardRepository
 
         DateTime sevenDaysAgo = now.AddDays(-7);
         bool isActive = await _context.TreeMetrics
-            .AnyAsync(m => m.TreeId == treeId && m.CreatedAt >= sevenDaysAgo, ct);
+            .AnyAsync(m => m.TreeId == treeId && m.Timestamp >= sevenDaysAgo, ct);
 
         return new TreeBasicInfoResponse(
             tree.Id,
@@ -59,13 +59,13 @@ public class TreeDashboardRepository : ITreeDashboardRepository
     {
         var latestMetric = await _context.TreeMetrics
             .Where(m => m.TreeId == treeId)
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.Timestamp)
             .Select(m => new
             {
                 m.AirTemperature,
                 m.SoilTemperature,
                 m.SoilMoisture,
-                m.CreatedAt
+                m.Timestamp
             })
             .FirstOrDefaultAsync(ct);
 
@@ -75,13 +75,13 @@ public class TreeDashboardRepository : ITreeDashboardRepository
         }
 
         DateTime now = DateTime.UtcNow;
-        int minutesSinceLastUpdate = (int)(now - latestMetric.CreatedAt).TotalMinutes;
+        int minutesSinceLastUpdate = (int)(now - latestMetric.Timestamp).TotalMinutes;
 
         return new TreeCurrentMetricsResponse(
             latestMetric.AirTemperature,
             latestMetric.SoilTemperature,
             latestMetric.SoilMoisture,
-            latestMetric.CreatedAt.UtcDateTime,
+            latestMetric.Timestamp,
             minutesSinceLastUpdate
         );
     }
@@ -95,7 +95,7 @@ public class TreeDashboardRepository : ITreeDashboardRepository
         DateTime startDate = now.AddDays(-days);
 
         List<TreeMetric> metrics = await _context.TreeMetrics
-            .Where(m => m.TreeId == treeId && m.CreatedAt >= startDate)
+            .Where(m => m.TreeId == treeId && m.Timestamp >= startDate)
             .ToListAsync(ct);
 
         if (!metrics.Any())
@@ -139,9 +139,9 @@ public class TreeDashboardRepository : ITreeDashboardRepository
 
         List<TreeMetric> metrics = await _context.TreeMetrics
             .Where(m => m.TreeId == treeId &&
-                       m.CreatedAt >= startDate_effective &&
-                       m.CreatedAt <= endDate_effective)
-            .OrderBy(m => m.CreatedAt)
+                       m.Timestamp >= startDate_effective &&
+                       m.Timestamp <= endDate_effective)
+            .OrderBy(m => m.Timestamp)
             .ToListAsync(ct);
 
         if (!metrics.Any())
@@ -152,7 +152,7 @@ public class TreeDashboardRepository : ITreeDashboardRepository
         List<TreeEnvironmentalTimeseriesDataPoint> dataPoints = interval.ToLower() switch
         {
             "hourly" => metrics
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, m.Timestamp.Day, m.Timestamp.Hour, 0, 0, DateTimeKind.Utc))
                 .Select(g => new TreeEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -167,7 +167,7 @@ public class TreeDashboardRepository : ITreeDashboardRepository
                 .ToList(),
 
             "weekly" => metrics
-                .GroupBy(m => GetWeekStart(m.CreatedAt.UtcDateTime))
+                .GroupBy(m => GetWeekStart(m.Timestamp))
                 .Select(g => new TreeEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -182,7 +182,7 @@ public class TreeDashboardRepository : ITreeDashboardRepository
                 .ToList(),
 
             "monthly" => metrics
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, 1, 0, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, 1, 0, 0, 0, DateTimeKind.Utc))
                 .Select(g => new TreeEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
@@ -197,7 +197,7 @@ public class TreeDashboardRepository : ITreeDashboardRepository
                 .ToList(),
 
             _ => metrics // daily (default)
-                .GroupBy(m => new DateTime(m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, 0, 0, 0, DateTimeKind.Utc))
+                .GroupBy(m => new DateTime(m.Timestamp.Year, m.Timestamp.Month, m.Timestamp.Day, 0, 0, 0, DateTimeKind.Utc))
                 .Select(g => new TreeEnvironmentalTimeseriesDataPoint(
                     g.Key,
                     g.Average(m => (double)m.AirTemperature),
