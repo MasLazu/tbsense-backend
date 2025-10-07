@@ -21,6 +21,12 @@ public static class TbSenseBackendServicesExtension
         services.AddScoped<IPlantationDashboardService, PlantationDashboardService>();
         services.AddScoped<ITreeDashboardService, TreeDashboardService>();
 
+        // AI services
+        services.AddScoped<IAiSessionService, AiSessionService>();
+        services.AddScoped<IAiSessionChatService, AiSessionChatService>();
+        services.AddScoped<ISystemPromptService, SystemPromptService>();
+        services.AddScoped<IKnowledgeBaseService, KnowledgeBaseService>();
+
         return services;
     }
 }

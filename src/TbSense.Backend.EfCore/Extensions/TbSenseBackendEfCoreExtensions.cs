@@ -21,6 +21,12 @@ public static class TbSenseBackendEfCoreExtensions
         services.AddScoped<IRepository<PlantationYieldPrediction>, Repository<PlantationYieldPrediction, TbSenseBackendDbContext>>();
         services.AddScoped<IRepository<PlantationHarvest>, Repository<PlantationHarvest, TbSenseBackendDbContext>>();
 
+        // AI entities
+        services.AddScoped<IRepository<AiSession>, Repository<AiSession, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<AiSessionChat>, Repository<AiSessionChat, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<SystemPrompt>, Repository<SystemPrompt, TbSenseBackendDbContext>>();
+        services.AddScoped<IRepository<KnowledgeBase>, Repository<KnowledgeBase, TbSenseBackendDbContext>>();
+
         services.AddScoped<IReadRepository<Plantation>, ReadRepository<Plantation, TbSenseBackendReadDbContext>>();
         services.AddScoped<IReadRepository<PlantationCoordinate>, ReadRepository<PlantationCoordinate, TbSenseBackendReadDbContext>>();
         services.AddScoped<IReadRepository<Tree>, ReadRepository<Tree, TbSenseBackendReadDbContext>>();
@@ -28,6 +34,12 @@ public static class TbSenseBackendEfCoreExtensions
         services.AddScoped<IReadRepository<Model>, ReadRepository<Model, TbSenseBackendReadDbContext>>();
         services.AddScoped<IReadRepository<PlantationYieldPrediction>, ReadRepository<PlantationYieldPrediction, TbSenseBackendReadDbContext>>();
         services.AddScoped<IReadRepository<PlantationHarvest>, ReadRepository<PlantationHarvest, TbSenseBackendReadDbContext>>();
+
+        // AI entities read repositories
+        services.AddScoped<IReadRepository<AiSession>, ReadRepository<AiSession, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<AiSessionChat>, ReadRepository<AiSessionChat, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<SystemPrompt>, ReadRepository<SystemPrompt, TbSenseBackendReadDbContext>>();
+        services.AddScoped<IReadRepository<KnowledgeBase>, ReadRepository<KnowledgeBase, TbSenseBackendReadDbContext>>();
 
         // Custom repositories
         services.AddScoped<ITrainingDataRepository, TrainingDataRepository>();

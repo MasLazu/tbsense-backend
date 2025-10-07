@@ -25,7 +25,12 @@ public static class TbSenseBackendUtilsExtension
             (typeof(TreeMetric), typeof(TreeMetricEntityPropertyMap)),
             (typeof(Model), typeof(ModelEntityPropertyMap)),
             (typeof(PlantationYieldPrediction), typeof(PlantationYieldPredictionEntityPropertyMap)),
-            (typeof(PlantationHarvest), typeof(PlantationHarvestEntityPropertyMap))
+            (typeof(PlantationHarvest), typeof(PlantationHarvestEntityPropertyMap)),
+            // AI entities
+            (typeof(AiSession), typeof(AiSessionEntityPropertyMap)),
+            (typeof(AiSessionChat), typeof(AiSessionChatEntityPropertyMap)),
+            (typeof(SystemPrompt), typeof(SystemPromptEntityPropertyMap)),
+            (typeof(KnowledgeBase), typeof(KnowledgeBaseEntityPropertyMap))
         };
 
         foreach ((Type entityType, Type propertyMapType) in entityPropertyMapPairs)

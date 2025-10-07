@@ -19,6 +19,12 @@ public class TbSenseBackendDbContext : BaseDbContext
     public DbSet<PlantationYieldPrediction> PlantationYieldPredictions { get; set; }
     public DbSet<PlantationHarvest> PlantationHarvests { get; set; }
 
+    // AI entities
+    public DbSet<AiSession> AiSessions { get; set; }
+    public DbSet<AiSessionChat> AiSessionChats { get; set; }
+    public DbSet<SystemPrompt> SystemPrompts { get; set; }
+    public DbSet<KnowledgeBase> KnowledgeBases { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

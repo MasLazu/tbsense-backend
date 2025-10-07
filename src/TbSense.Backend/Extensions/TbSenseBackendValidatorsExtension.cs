@@ -24,6 +24,16 @@ public static class TbSenseBackendValidatorsExtension
         services.AddScoped<IValidator<CreatePlantationHarvestRequest>, CreatePlantationHarvestRequestValidator>();
         services.AddScoped<IValidator<UpdatePlantationHarvestRequest>, UpdatePlantationHarvestRequestValidator>();
 
+        // AI validators
+        services.AddScoped<IValidator<CreateAiSessionRequest>, CreateAiSessionRequestValidator>();
+        services.AddScoped<IValidator<UpdateAiSessionRequest>, UpdateAiSessionRequestValidator>();
+        services.AddScoped<IValidator<CreateAiSessionChatRequest>, CreateAiSessionChatRequestValidator>();
+        services.AddScoped<IValidator<UpdateAiSessionChatRequest>, UpdateAiSessionChatRequestValidator>();
+        services.AddScoped<IValidator<CreateSystemPromptRequest>, CreateSystemPromptRequestValidator>();
+        services.AddScoped<IValidator<UpdateSystemPromptRequest>, UpdateSystemPromptRequestValidator>();
+        services.AddScoped<IValidator<CreateKnowledgeBaseRequest>, CreateKnowledgeBaseRequestValidator>();
+        services.AddScoped<IValidator<UpdateKnowledgeBaseRequest>, UpdateKnowledgeBaseRequestValidator>();
+
         return services;
     }
 }
