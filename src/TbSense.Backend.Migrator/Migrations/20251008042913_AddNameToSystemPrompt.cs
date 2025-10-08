@@ -1,0 +1,30 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace TbSense.Backend.Migrator.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddNameToSystemPrompt : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<string>(
+                name: "name",
+                table: "system_prompts",
+                type: "character varying(200)",
+                maxLength: 200,
+                nullable: false,
+                defaultValue: "");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "name",
+                table: "system_prompts");
+        }
+    }
+}

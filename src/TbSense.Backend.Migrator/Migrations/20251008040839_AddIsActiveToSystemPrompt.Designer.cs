@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TbSense.Backend.EfCore.Data;
@@ -11,9 +12,11 @@ using TbSense.Backend.EfCore.Data;
 namespace TbSense.Backend.Migrator.Migrations
 {
     [DbContext(typeof(TbSenseBackendDbContext))]
-    partial class TbSenseBackendDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251008040839_AddIsActiveToSystemPrompt")]
+    partial class AddIsActiveToSystemPrompt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -399,12 +402,6 @@ namespace TbSense.Backend.Migrator.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
 
                     b.Property<string>("Prompt")
                         .IsRequired()
