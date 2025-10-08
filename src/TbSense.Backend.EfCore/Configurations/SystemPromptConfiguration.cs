@@ -10,7 +10,14 @@ public class SystemPromptConfiguration : IEntityTypeConfiguration<SystemPrompt>
     {
         builder.HasKey(s => s.Id);
 
+        builder.Property(s => s.Name)
+            .IsRequired()
+            .HasMaxLength(200);
+
         builder.Property(s => s.Prompt)
             .IsRequired();
+
+        builder.Property(s => s.IsActive)
+            .HasDefaultValue(true);
     }
 }

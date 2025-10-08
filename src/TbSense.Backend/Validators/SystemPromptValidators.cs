@@ -7,6 +7,10 @@ public class CreateSystemPromptRequestValidator : AbstractValidator<CreateSystem
 {
     public CreateSystemPromptRequestValidator()
     {
+        RuleFor(x => x.Name)
+            .NotEmpty()
+            .MaximumLength(200);
+
         RuleFor(x => x.Prompt)
             .NotEmpty();
     }
@@ -18,6 +22,11 @@ public class UpdateSystemPromptRequestValidator : AbstractValidator<UpdateSystem
     {
         RuleFor(x => x.Id)
             .NotEmpty();
+
+        RuleFor(x => x.Name)
+            .NotEmpty()
+            .MaximumLength(200)
+            .When(x => !string.IsNullOrEmpty(x.Name));
 
         RuleFor(x => x.Prompt)
             .NotEmpty()

@@ -10,7 +10,9 @@ public class SystemPromptEntityPropertyMap : IEntityPropertyMap<SystemPrompt>
         new(StringComparer.OrdinalIgnoreCase)
         {
             { "id", s => s.Id },
+            { "name", s => s.Name },
             { "prompt", s => s.Prompt },
+            { "isActive", s => s.IsActive },
             { "createdAt", s => s.CreatedAt },
             { "updatedAt", s => s.UpdatedAt! },
         };

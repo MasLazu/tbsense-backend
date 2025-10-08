@@ -429,7 +429,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
         List<Tree> trees = await _context.Trees
             .Include(t => t.Metrics)
-            .Where(t => t.PlantationId == plantationId && t.CreatedAt <= endDate_effective)
+            .Where(t => t.PlantationId == plantationId && t.Plantation.PlantedDate <= endDate_effective)
             .ToListAsync(ct);
 
         if (!trees.Any())
@@ -441,7 +441,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
         var dataPoints = timePoints.Select(timestamp =>
         {
-            var existingTrees = trees.Where(t => t.CreatedAt <= timestamp).ToList();
+            var existingTrees = trees.Where(t => t.Plantation.PlantedDate <= timestamp).ToList();
             int totalTrees = existingTrees.Count;
 
             DateTime sevenDaysBeforeTimestamp = timestamp.AddDays(-7);
@@ -558,10 +558,10 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
             {
                 t.Id,
                 AvgAirTemp = t.Metrics
-                    .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+                    .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
                     .Average(m => (double?)m.AirTemperature),
                 AvgSoilMoisture = t.Metrics
-                    .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+                    .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
                     .Average(m => (double?)m.SoilMoisture)
             })
             .Where(t => t.AvgAirTemp.HasValue && t.AvgSoilMoisture.HasValue)
@@ -659,7 +659,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
             {
                 t.Id,
                 Metrics = t.Metrics
-                    .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+                    .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
                     .ToList()
             })
             .Where(t => t.Metrics.Any());
@@ -759,7 +759,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
             DateTime monthEnd = current.AddMonths(1).AddDays(-1);
 
             int activeTrees = trees.Count(t => t.Metrics.Any(m =>
-                m.CreatedAt >= monthStart && m.CreatedAt <= monthEnd));
+                m.Timestamp >= monthStart && m.Timestamp <= monthEnd));
             int totalTrees = trees.Count;
             int inactiveTrees = totalTrees - activeTrees;
 
@@ -798,10 +798,10 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
             {
                 t.Id,
                 AvgAirTemp = t.Metrics
-                    .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+                    .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
                     .Average(m => (double?)m.AirTemperature),
                 AvgSoilMoisture = t.Metrics
-                    .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+                    .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
                     .Average(m => (double?)m.SoilMoisture)
             })
             .Where(t => t.AvgAirTemp.HasValue && t.AvgSoilMoisture.HasValue)
@@ -969,7 +969,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
         List<double> temperatures = await _context.TreeMetrics
             .Where(m => m.Tree.PlantationId == plantationId)
-            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+            .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
             .Select(m => (double)m.AirTemperature)
             .ToListAsync(ct);
 
@@ -992,7 +992,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
         List<double> temperatures = await _context.TreeMetrics
             .Where(m => m.Tree.PlantationId == plantationId)
-            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+            .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
             .Select(m => (double)m.SoilTemperature)
             .ToListAsync(ct);
 
@@ -1015,7 +1015,7 @@ public class PlantationDashboardRepository : IPlantationDashboardRepository
 
         List<double> moisture = await _context.TreeMetrics
             .Where(m => m.Tree.PlantationId == plantationId)
-            .Where(m => m.CreatedAt >= startDate_effective && m.CreatedAt <= endDate_effective)
+            .Where(m => m.Timestamp >= startDate_effective && m.Timestamp <= endDate_effective)
             .Select(m => (double)m.SoilMoisture)
             .ToListAsync(ct);
 
