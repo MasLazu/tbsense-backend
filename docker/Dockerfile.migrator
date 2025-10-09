@@ -1,0 +1,45 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy package props for centralized package management
+COPY Directory.Packages.props ./
+
+# Copy all project files
+COPY src/TbSense.Backend/TbSense.Backend.csproj src/TbSense.Backend/
+COPY src/TbSense.Backend.Abstraction/TbSense.Backend.Abstraction.csproj src/TbSense.Backend.Abstraction/
+COPY src/TbSense.Backend.Domain/TbSense.Backend.Domain.csproj src/TbSense.Backend.Domain/
+COPY src/TbSense.Backend.EfCore/TbSense.Backend.EfCore.csproj src/TbSense.Backend.EfCore/
+COPY src/TbSense.Backend.EfCore.Postgresql/TbSense.Backend.EfCore.Postgresql.csproj src/TbSense.Backend.EfCore.Postgresql/
+COPY src/TbSense.Backend.Endpoints/TbSense.Backend.Endpoints.csproj src/TbSense.Backend.Endpoints/
+COPY src/TbSense.Backend.Migrator/TbSense.Backend.Migrator.csproj src/TbSense.Backend.Migrator/
+COPY src/TbSense.Backend.Storage/TbSense.Backend.Storage.csproj src/TbSense.Backend.Storage/
+COPY src/TbSense.Backend.Storage.Abstraction/TbSense.Backend.Storage.Abstraction.csproj src/TbSense.Backend.Storage.Abstraction/
+COPY src/TbSense.Backend.Trainer/TbSense.Backend.Trainer.csproj src/TbSense.Backend.Trainer/
+COPY src/TbSense.Backend.Trainer.Abstraction/TbSense.Backend.Trainer.Abstraction.csproj src/TbSense.Backend.Trainer.Abstraction/
+
+# Restore dependencies
+RUN dotnet restore src/TbSense.Backend.Migrator/TbSense.Backend.Migrator.csproj
+
+# Copy everything else
+COPY . .
+
+# Build the application
+WORKDIR /src/src/TbSense.Backend.Migrator
+RUN dotnet build TbSense.Backend.Migrator.csproj -c Release -o /app/build
+
+# Publish stage
+FROM build AS publish
+RUN dotnet publish TbSense.Backend.Migrator.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
+WORKDIR /app
+
+# Copy published app
+COPY --from=publish /app/publish .
+
+# Copy appsettings files
+COPY --from=publish /src/src/TbSense.Backend.Migrator/appsettings*.json ./
+
+ENTRYPOINT ["dotnet", "TbSense.Backend.Migrator.dll"]
