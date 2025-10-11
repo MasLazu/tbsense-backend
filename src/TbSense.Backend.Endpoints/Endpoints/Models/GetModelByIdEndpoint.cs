@@ -16,6 +16,7 @@ public class GetModelByIdEndpoint : BaseEndpoint<IdRequest, ModelDto>
     {
         Get("/{Id}");
         Group<ModelsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

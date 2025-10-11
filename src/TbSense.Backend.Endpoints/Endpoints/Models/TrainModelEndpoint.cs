@@ -14,6 +14,7 @@ public class TrainModelEndpoint : BaseEndpoint<TrainModelRequest, TrainModelResp
     {
         Post("/train");
         Group<ModelsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(TrainModelRequest req, CancellationToken ct)

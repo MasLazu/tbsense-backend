@@ -15,6 +15,7 @@ public class DeleteModelEndpoint : BaseEndpointWithoutResponse<IdRequest>
     {
         Delete("/{Id}");
         Group<ModelsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(IdRequest req, CancellationToken ct)

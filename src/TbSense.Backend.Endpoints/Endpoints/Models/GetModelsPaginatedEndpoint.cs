@@ -15,6 +15,7 @@ public class GetModelsPaginatedEndpoint : BaseEndpoint<PaginationRequest, Pagina
     {
         Post("/paginated");
         Group<ModelsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(PaginationRequest req, CancellationToken ct)

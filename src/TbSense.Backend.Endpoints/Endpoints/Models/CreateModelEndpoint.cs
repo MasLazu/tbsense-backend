@@ -15,6 +15,7 @@ public class CreateModelEndpoint : BaseEndpoint<CreateModelRequest, ModelDto>
     {
         Post("/");
         Group<ModelsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(CreateModelRequest req, CancellationToken ct)

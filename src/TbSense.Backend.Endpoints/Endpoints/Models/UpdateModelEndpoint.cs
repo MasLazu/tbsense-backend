@@ -15,6 +15,7 @@ public class UpdateModelEndpoint : BaseEndpoint<UpdateModelRequest, ModelDto>
     {
         Put("/");
         Group<ModelsEndpointGroup>();
+        AllowAnonymous();
     }
 
     public override async Task HandleAsync(UpdateModelRequest req, CancellationToken ct)
