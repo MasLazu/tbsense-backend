@@ -10,6 +10,8 @@ using TbSense.Backend.EfCore.Postgresql.Extensions;
 using TbSense.Backend.Endpoints.Extensions;
 using TbSense.Backend.Extensions;
 using TbSense.Backend.Server.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.OpenApi.Models;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +37,14 @@ builder.Services.ConfigureStorageService(builder.Configuration);
 
 // Add FastEndpoints
 builder.Services.AddFastEndpoints();
-builder.Services.SwaggerDocument();
+builder.Services.SwaggerDocument(c => c.DocumentSettings = s =>
+    {
+        string? serverUrl = builder.Configuration["Swagger:ServerUrl"];
+        if (!string.IsNullOrEmpty(serverUrl))
+        {
+            s.PostProcess = doc => doc.Servers.Add(new NSwag.OpenApiServer { Url = serverUrl });
+        }
+    });
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -54,6 +63,11 @@ builder.Services.AddCors(options =>
 });
 
 WebApplication app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
+});
 
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
