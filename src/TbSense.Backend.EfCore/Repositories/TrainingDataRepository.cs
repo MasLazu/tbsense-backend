@@ -27,31 +27,32 @@ public class TrainingDataRepository : ITrainingDataRepository
 
         var trainingData = await _context.Plantations
             .Where(p => p.PlantedDate <= startDate)
-            .Select(p => new
-            {
-                Plantation = p,
-                PlantationAgeDays = (int)(startDate - p.PlantedDate).TotalDays,
-                TreeCount = p.Trees.Count,
-                MetricsData = p.Trees
-                    .SelectMany(t => t.Metrics
-                        .Where(m => m.Timestamp >= startDate && m.Timestamp <= endDate))
-                    .GroupBy(m => 1)
-                    .Select(g => new
-                    {
-                        AvgAirTemperature = g.Average(m => m.AirTemperature),
-                        AvgSoilTemperature = g.Average(m => m.SoilTemperature),
-                        AvgSoilMoisture = g.Average(m => m.SoilMoisture),
-                        MetricCount = g.Count()
-                    })
-                    .FirstOrDefault(),
-                TotalYield = p.Harvests
-                    .Where(h => h.HarvestDate >= startDate && h.HarvestDate <= endDate)
-                    .Sum(h => (double?)h.YieldKg) ?? 0
-            })
+            .SelectMany(p => p.Harvests
+                .Where(h => h.HarvestDate >= startDate && h.HarvestDate <= endDate)
+                .Select(h => new
+                {
+                    Plantation = p,
+                    Harvest = h,
+                    PlantationAgeDays = (int)(h.HarvestDate - p.PlantedDate).TotalDays,
+                    TreeCount = p.Trees.Count,
+                    MetricsData = p.Trees
+                        .SelectMany(t => t.Metrics
+                            .Where(m => m.Timestamp >= startDate && m.Timestamp <= h.HarvestDate))
+                        .GroupBy(m => 1)
+                        .Select(g => new
+                        {
+                            AvgAirTemperature = g.Average(m => m.AirTemperature),
+                            AvgSoilTemperature = g.Average(m => m.SoilTemperature),
+                            AvgSoilMoisture = g.Average(m => m.SoilMoisture),
+                            MetricCount = g.Count()
+                        })
+                        .FirstOrDefault(),
+                    Yield = h.YieldKg
+                }))
             .Where(x => x.TreeCount > 0 &&
                        x.MetricsData != null &&
                        x.MetricsData.MetricCount > 0 &&
-                       x.TotalYield > 0)
+                       x.Yield > 0)
             .ToListAsync(ct);
 
         var result = trainingData.Select(x =>
@@ -61,7 +62,7 @@ public class TrainingDataRepository : ITrainingDataRepository
                 : 0;
 
             double yieldPerHectarePerMonth = x.Plantation.LandAreaHectares > 0
-                ? x.TotalYield / x.Plantation.LandAreaHectares / periodMonths
+                ? x.Yield / x.Plantation.LandAreaHectares / periodMonths
                 : 0;
 
             return new ProcessedDataRow(
@@ -74,7 +75,7 @@ public class TrainingDataRepository : ITrainingDataRepository
                 TreesPerHectare: treesPerHectare,
                 YieldPerHectarePerMonth: yieldPerHectarePerMonth,
                 PeriodStart: startDate,
-                PeriodEnd: endDate
+                PeriodEnd: x.Harvest.HarvestDate
             );
         }).ToList();
 
